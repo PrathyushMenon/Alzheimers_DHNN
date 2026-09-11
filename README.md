@@ -238,8 +238,31 @@ holdout, development-only tuning, confidence intervals, and per-class metrics.
 In particular, MCI recall must be reported because overall accuracy can hide a
 model that mostly predicts CN or AD.
 
-## Experimental scripts
+## Encoder scripts
 
-The scripts under `code/` include legacy and evaluation utilities for the
-available local feature layout. They are useful for research experiments but
-are not substitutes for the public `python main.py` release contract.
+The available Swin-FOD source and extraction wrapper are under
+`code/multimodalAD/Swin_FOD/`. With a compatible Swin-FOD checkpoint and a
+subject-aligned manifest, extraction can be run with:
+
+```powershell
+python code/multimodalAD/Swin_FOD/extract_features_local.py `
+  --checkpoint checkpoints/swin_fod/model.pt `
+  --manifest data/official_inputs/swin_fod_local.csv `
+  --output-dir data/processed/dmri
+```
+
+The available ALBEF source and training scripts are under
+`code/multimodalAD/ALBEF/`. The custom 3-D model module
+`models/model_pretrain3D.py` and its compatible checkpoint are not present in
+the public source, so `scripts/train_albef.sh` stops with a precise message
+until those private/custom assets are supplied. Official 2-D Salesforce ALBEF
+weights are not compatible with this 3-D MRI/PET model.
+
+These limitations are intentional and documented: the project does not claim
+that an unrelated checkpoint is an exact encoder. Once compatible encoders
+produce the three split arrays under `data/processed/`, the public classifier
+is run with:
+
+```powershell
+python main.py
+```

@@ -25,8 +25,11 @@ fi
 
 echo "Training ALBEF with checkpoint $CHECKPOINT -> $OUTDIR (ngpus=$NGPUS)"
 if [ ! -f "code/multimodalAD/ALBEF/models/model_pretrain3D.py" ]; then
-  echo "ERROR: official ALBEF model module is missing: code/multimodalAD/ALBEF/models/model_pretrain3D.py" >&2
-  echo "The cloned multimodalAD repo does not include the ALBEF model implementation needed for exact reproduction." >&2
+  echo "ERROR: the custom 3-D ALBEF model module is not included in the public source:" >&2
+  echo "  code/multimodalAD/ALBEF/models/model_pretrain3D.py" >&2
+  echo "The available ALBEF source is retained, but this private/custom module and checkpoint" >&2
+  echo "must be supplied before raw MRI/PET extraction can run." >&2
+  echo "After supplying it, rerun this command with the compatible checkpoint." >&2
   exit 2
 fi
 

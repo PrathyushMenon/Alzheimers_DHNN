@@ -19,6 +19,12 @@ if [ ! -f "$MANIFEST" ]; then
   exit 2
 fi
 
+if [ -z "${SWIN_CHECKPOINT:-}" ]; then
+  echo "INFO: no SWIN_CHECKPOINT supplied; this command will train Swin-FOD from raw prepared inputs." >&2
+  echo "For feature extraction from an existing model, run:" >&2
+  echo "  python code/multimodalAD/Swin_FOD/extract_features_local.py --checkpoint <checkpoint> --manifest \"$MANIFEST\"" >&2
+fi
+
 echo "Training official Swin-FOD"
 echo "manifest=$MANIFEST"
 echo "outdir=$OUTDIR"

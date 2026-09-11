@@ -37,7 +37,10 @@ __pycache__/
 *.tar.gz
 folder_structure.txt
 2048_paper*.pdf
-
+V2_DHNN_PROTO_IMPLEMENTATION.md
+BASE_V1_V2_COMPARISON.md
+METHODOLOGY.md
+visualized.md
 # OS/editor files
 .DS_Store
 Thumbs.db
