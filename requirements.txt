@@ -1,0 +1,17 @@
+torch>=2.0.0
+torchvision
+monai
+nibabel
+numpy
+scipy
+pandas
+scikit-learn
+scikit-image
+ruamel.yaml
+matplotlib
+tqdm
+antspyx
+SimpleITK
+pyreadr
+# TabPFN may require special installation; adjust if needed
+# tabpfn

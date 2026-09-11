@@ -1,0 +1,13 @@
+# Single release configuration. Paths are fixed by the public pipeline contract.
+random_state: 42
+pca_dim: 58
+device: cpu
+epochs: 250
+patience: 40
+tsne_perplexity: 30
+ensemble_seeds: [42, 52, 62, 72, 82]
+class_weights: [1.0, 1.25, 1.0]
+mci_margin: 1.2
+mci_margin_weight: 0.08
+proto_temperature: 0.12
+hypergraph_knn_k: 4

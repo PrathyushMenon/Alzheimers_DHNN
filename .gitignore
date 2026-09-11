@@ -1,0 +1,44 @@
+# Patient data and local datasets
+data/raw/**
+!data/raw/.gitkeep
+!data/raw/dmri/.gitkeep
+!data/raw/mri/.gitkeep
+!data/raw/pet/.gitkeep
+data/bids/
+data/bids_clinical/
+data/caps/
+data/fod/
+data/pet_suvr/
+data/splits/
+data/tabular/
+ADNI DATA/
+
+# Derived features, checkpoints, and experiment outputs
+data/processed/**
+!data/processed/.gitkeep
+features/
+checkpoints/
+results/
+logs/
+env/
+.venv/
+
+# Python and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local archives and reports containing data
+*.zip
+*.7z
+*.tar
+*.tar.gz
+folder_structure.txt
+2048_paper*.pdf
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
