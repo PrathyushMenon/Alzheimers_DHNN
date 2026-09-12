@@ -9,6 +9,19 @@ embeddings by itself. The public `main.py` contract requires compatible
 pre-extracted embeddings. If only raw scans are supplied, it stops with an
 actionable error rather than silently using an unrelated fallback.
 
+## **Important runtime requirement:** the Swin-FOD and ALBEF implementations are
+included in the repository, but implementations alone are not runnable
+encoders. To go directly from raw scans to final output, users must also
+provide compatible trained checkpoints, the complete matching model modules,
+the preprocessing/registration configuration, a valid study mask, and a
+subject-aligned extraction manifest. If any one of those required assets is
+missing or incompatible, raw-only execution cannot produce valid embeddings.
+The current public `main.py` invokes the existing raw-data runner when
+pre-extracted embeddings are absent. That runner still requires compatible
+checkpoints, matching model modules, preprocessing tools, and manifests. It
+stops with an actionable error rather than silently using an unrelated
+fallback.
+
 ## What is present
 
 The pipeline performs:
@@ -49,6 +62,40 @@ source .venv/bin/activate
 
 Python 3.10 or newer is recommended. A CPU run is supported; CUDA-enabled
 PyTorch can be installed separately when GPU training is available.
+
+### Required raw-pipeline software
+
+The Python packages are listed in [requirements.txt](requirements.txt). The raw
+ADNI stages also call command-line neuroimaging software that pip cannot
+reliably install:
+
+| Tool | Used for | Required command(s) |
+|---|---|---|
+| `dcm2niix` | DICOM-to-NIfTI conversion | `dcm2niix` |
+| ClinicaDL/Clinica | T1-linear preprocessing and CAPS output | `clinicadl`, `clinica` |
+| ANTs | PET registration and normalization | `antsRegistration` |
+| MRtrix3 | dMRI denoising, preprocessing, response estimation, and FOD | `dwidenoise`, `dwifslpreproc`, `dwi2response`, `dwi2fod`, `mrtransform` |
+| FSL | Diffusion preprocessing used by MRtrix3 | FSL environment and `eddy` |
+
+On Ubuntu/WSL, install the Python dependencies first and then use the supplied
+setup helper:
+
+```bash
+bash scripts/setup_exact_environment.sh
+```
+
+That helper installs the available system packages and the pinned ClinicaDL
+and Clinica versions. Install FSL separately from the official FSL
+documentation, because its license, environment variables, and distribution
+are managed outside pip. Confirm the tools are visible before running:
+
+```bash
+command -v dcm2niix clinicadl antsRegistration dwidenoise dwifslpreproc dwi2fod mrtransform
+```
+
+On Windows, run the pipeline inside WSL2 Ubuntu. The Python entrypoint detects
+Windows and forwards the raw stages to WSL; native Windows installations of
+MRtrix3, FSL, ANTs, and ClinicaDL are not assumed.
 
 ## Data layout
 
@@ -93,10 +140,11 @@ train, validation, or test. Do not mix scans from one subject across
 partitions. The pipeline expects one aligned subject row per modality; missing
 or mismatched subjects must be resolved before feature extraction.
 
-### Embeddings required by `main.py`
+### Optional pre-extracted embeddings
 
-Before running the release entrypoint, place finite two-dimensional NumPy
-arrays in:
+The raw pipeline creates these arrays automatically. If you already have
+compatible embeddings, you can skip raw extraction and place finite
+two-dimensional NumPy arrays in:
 
 ```text
 data/processed/
@@ -118,7 +166,8 @@ The row order in each modality must match `clinical.csv`. MRI and PET are
 concatenated and reduced jointly to 35 components. dMRI is reduced to 20
 components. The resulting model input is exactly 58 dimensions.
 
-The repository also contains the legacy experiment layout:
+The repository also contains the legacy experiment layout produced by the raw
+runner:
 
 ```text
 features/fod/{train,val,test}_features.npy
@@ -128,10 +177,16 @@ features/mri_pet/{train,val,test}_features.npy
 Those files are used by the experimental scripts under `code/`; the public
 single-entrypoint contract uses `data/processed/` and `data/raw/clinical.csv`.
 
+If these arrays are absent, `main.py` invokes `code/run_pipeline.py`, which
+runs the existing organization, split, ClinicaDL, PET, FOD, Swin-FOD, and
+ALBEF stages. Its legacy feature outputs are adapted to this release layout
+before DHNN runs.
+
 ## Running the pipeline
 
-After installing dependencies, adding the raw archive and clinical metadata,
-and supplying compatible pre-extracted embeddings:
+After installing dependencies, installing the required system tools, adding
+the raw archive and clinical metadata, and supplying the compatible encoder
+assets:
 
 ```powershell
 python main.py
@@ -140,11 +195,67 @@ python main.py
 The command reads [config.yaml](config.yaml). No Python edits are required for
 normal configuration changes.
 
-If embeddings are missing, the command fails clearly and explains which files
-are required. It does not resize raw volumes or invent replacement features.
-The Swin-FOD and ALBEF research scripts under `code/multimodalAD/` are retained
-for users who have the missing compatible model/checkpoint assets, but they are
-not a guaranteed raw-only one-command extractor in this release.
+If embeddings are missing, the command runs the raw stages and reports any
+missing external tool, checkpoint, or model module clearly. It does not resize
+raw volumes or invent replacement features.
+
+### Complete runtime checklist
+
+Before `python main.py`, verify that all of the following are available:
+
+1. `data/raw/clinical.csv` with diagnosis, age, sex, and MoCA/MMSE.
+2. Subject- and visit-matched MRI, PET, and dMRI data under `data/raw/`.
+3. A valid MNI cerebellar reference mask at
+   `data/MNI_cerebellum_mask.nii.gz`, or a replacement selected with
+   `CEREBELLUM_MASK`.
+4. The compatible Swin-FOD checkpoint at
+   `checkpoints/swin_fod/model.pt` or `model_final.pt`.
+5. The complete compatible custom 3-D ALBEF model module under
+   `code/multimodalAD/ALBEF/models/model_pretrain3D.py`.
+6. The compatible 3-D ALBEF checkpoint at
+   `checkpoints/albef/hable_pretrain_checkpoint.pth`, or a replacement
+   selected with `ALBEF_PRETRAIN_CHECKPOINT`.
+7. The external commands listed above on the WSL/Linux `PATH`.
+8. Enough disk space for BIDS, CAPS, PET SUVR, FOD, feature, log, and result
+   outputs. These derived files can require many gigabytes.
+
+When all eight requirements are met, a clean run is:
+
+```bash
+python main.py
+```
+
+The entrypoint reuses existing outputs where possible, runs missing raw stages,
+creates subject-level splits and manifests, extracts encoder features, adapts
+them to `data/processed/`, and then runs the DHNN classifier. If any required
+asset is absent or incompatible, it stops rather than producing misleading
+results.
+
+### Important expectation about the two checkpoints
+
+The complete input is **not** just raw data plus two checkpoint files.
+Checkpoints contain learned weights, but a successful raw run also needs the
+matching model definitions, preprocessing behavior, mask, manifests, and
+system tools listed above. In particular, the 3-D ALBEF checkpoint must match
+the custom 3-D ALBEF module, and the Swin-FOD checkpoint must match the
+included Swin-FOD architecture and input preprocessing.
+
+The supported workflow is:
+
+```text
+Install requirements.txt
+Install/configure WSL2/Linux neuroimaging tools
+Provide raw data, clinical.csv, mask, compatible checkpoints, and matching model files
+Run: python main.py
+```
+
+When those prerequisites are present and compatible, `main.py` runs the
+complete raw-to-results pipeline without manually creating
+`data/processed/*.npy`. The stages have been wired together and syntax-checked,
+but a fresh clone with private/large checkpoints and every external tool has
+not been independently validated here. The README therefore documents the
+required environment rather than promising that arbitrary checkpoints or
+arbitrary ADNI folder layouts will work.
 
 ## Outputs
 
@@ -195,12 +306,30 @@ would be test-set cherry-picking and would make the result unreliable.
 
 ## Checkpoints, masks, and compatibility disclosure
 
-The repository includes the available source code and configuration related to
-Swin-FOD and ALBEF, but it does not include the exact trained author
-checkpoints or the complete exact ALBEF 3-D implementation required to
-reproduce the paper's encoder output. The online ALBEF code included here is
-not, by itself, an exact compatible checkpoint for this ADNI 3-D pipeline.
-The exact author-provided cerebellar mask/provenance was also not confirmed.
+The repository includes the available Swin-FOD and ALBEF implementations and
+their configuration/source material. The implementation is not the same thing
+as a trained checkpoint. A raw-only run requires **all** of the following:
+
+| Required item | Why it is required |
+|---|---|
+| Raw dMRI, MRI, PET, and clinical data | The subject-level inputs |
+| Compatible trained Swin-FOD checkpoint | Learned dMRI feature extraction weights |
+| Compatible trained 3-D ALBEF checkpoint | Learned MRI/PET feature extraction weights |
+| Complete matching model modules | Checkpoints contain weights, not necessarily the Python architecture |
+| Matching preprocessing and registration rules | The encoders require the same tensor layout, spacing, normalization, and input size used during training |
+| Valid study/cerebellar mask | Required by the relevant preprocessing; the included substitute is not verified as the authors' exact mask |
+| Subject-aligned manifest and split definition | Prevents MRI, PET, dMRI, and clinical rows from being paired incorrectly or leaking across splits |
+| Raw-extraction wiring | `main.py` invokes `code/run_pipeline.py`; its legacy outputs are adapted to `data/processed/` before classification |
+
+If any required item is unavailable, the raw-to-embedding stage cannot be
+trusted and the final classifier cannot run from raw data alone. When all
+required tools and model assets are available, `main.py` invokes the runner
+and performs the complete raw extraction stage automatically.
+
+The exact trained author checkpoints, exact preprocessing provenance, and
+complete custom 3-D ALBEF module were not available to verify in this release.
+The included encoder implementations can be used as a starting point, but
+they do not automatically make arbitrary checkpoints compatible.
 
 The repository contains `data/MNI_cerebellum_mask.nii.gz` as an available
 synthetic/substitute mask asset. Users must supply and validate the actual
@@ -211,9 +340,21 @@ verified.
 Accordingly, results generated with substitute or pre-extracted embeddings
 must be described as using the closest available compatible components, not as
 an exact reproduction of the authors' model. If the original checkpoints,
-missing 3-D ALBEF module, actual mask, and preprocessing are obtained later,
+complete 3-D ALBEF module, actual mask, and preprocessing are obtained later,
 they can be used to regenerate the arrays in `data/processed/`. Those private
 assets are intentionally not committed.
+
+If the authors do not reply, the following can be recreated locally:
+
+| Missing item | Local recreation approach | Faithfulness level |
+|---|---|---|
+| Swin-FOD checkpoint | Train or fine-tune the included Swin-FOD implementation on appropriately preprocessed dMRI data | Approximate unless the original training recipe and weights are recovered |
+| ALBEF checkpoint | Train or pretrain the included 3-D ALBEF implementation on compatible MRI/PET data | Approximate unless the original training recipe and weights are recovered |
+| Exact preprocessing and mask | Reconstruct the documented preprocessing, validate it on the local ADNI-format data, and use a verified study mask | Approximate unless the authors' files are recovered |
+
+Recreating these items produces a working substitute pipeline only after the
+raw-extraction runner is also configured and connected to `main.py`. It must
+not be described as the authors' exact checkpoint or exact reproduction.
 
 ## What is and is not uploaded
 
@@ -221,8 +362,9 @@ The GitHub release contains source code, configuration, documentation, the
 available mask substitute, and empty input-directory markers. It intentionally
 does not contain raw ADNI data, clinical records, derived feature arrays,
 predictions, results, local environments, checkpoints, or private archives.
-After cloning, users must provide their own raw data, actual mask, compatible
-encoder checkpoints/model files, and generated embeddings.
+After cloning, users must provide their own raw data, compatible encoder
+checkpoints/model files, and either generated embeddings or a complete
+configured raw-extraction stage.
 
 ## Encoder scripts
 

@@ -1,6 +1,7 @@
 torch>=2.0.0
 torchvision
 monai
+torchio
 nibabel
 numpy
 scipy
@@ -8,10 +9,18 @@ pandas
 scikit-learn
 scikit-image
 ruamel.yaml
+ruamel.yaml.clib
 matplotlib
 tqdm
 antspyx
 SimpleITK
 pyreadr
+Pillow
+opencv-python
+transformers
+timm
+einops
+clinicadl==0.1.2
+clinica==0.7.6
 # TabPFN may require special installation; adjust if needed
 # tabpfn

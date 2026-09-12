@@ -11,3 +11,4 @@ mci_margin: 1.2
 mci_margin_weight: 0.08
 proto_temperature: 0.12
 hypergraph_knn_k: 4
+auto_raw_pipeline: true
