@@ -166,7 +166,7 @@ The row order in each modality must match `clinical.csv`. MRI and PET are
 concatenated and reduced jointly to 35 components. dMRI is reduced to 20
 components. The resulting model input is exactly 58 dimensions.
 
-The repository also contains the legacy experiment layout produced by the raw
+The repository also contains the previous experiment layout produced by the raw
 runner:
 
 ```text
