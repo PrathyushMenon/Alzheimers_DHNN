@@ -1,19 +1,15 @@
 # Multimodal Alzheimer's Disease Pipeline
 
-This repository contains a leak-aware multimodal CN/MCI/AD classification
-pipeline using pre-extracted dMRI, MRI/PET, and clinical features followed by
-PCA, dynamic hypergraph attention, and a prototypical classifier.
+## **Important limitation:** the repository contains the Swin-FOD and ALBEF
+source/configuration material that was available to us, but it does not
+contain the exact trained author checkpoints, the missing custom 3-D ALBEF
+model module, or a verified copy of the authors' preprocessing/mask. Therefore
+a fresh clone cannot currently turn raw scans into the paper's exact
+embeddings by itself. The public `main.py` contract requires compatible
+pre-extracted embeddings. If only raw scans are supplied, it stops with an
+actionable error rather than silently using an unrelated fallback.
 
-> **Important limitation:** the repository contains the Swin-FOD and ALBEF
-> source/configuration material that was available to us, but it does not
-> contain the exact trained author checkpoints, the missing custom 3-D ALBEF
-> model module, or a verified copy of the authors' preprocessing/mask. Therefore
-> a fresh clone cannot currently turn raw scans into the paper's exact
-> embeddings by itself. The public `main.py` contract requires compatible
-> pre-extracted embeddings. If only raw scans are supplied, it stops with an
-> actionable error rather than silently using an unrelated fallback.
-
-## What is included
+## What is present
 
 The pipeline performs:
 
@@ -56,10 +52,9 @@ PyTorch can be installed separately when GPU training is available.
 
 ## Data layout
 
-### Raw source data (not committed)
+### Raw source data
 
-Keep raw data outside Git and never commit it. The intended raw-data locations
-are:
+The intended raw-data locations are:
 
 ```text
 data/raw/
@@ -228,15 +223,6 @@ does not contain raw ADNI data, clinical records, derived feature arrays,
 predictions, results, local environments, checkpoints, or private archives.
 After cloning, users must provide their own raw data, actual mask, compatible
 encoder checkpoints/model files, and generated embeddings.
-
-## Expected performance
-
-The included development cohort is small, so its accuracy is not a reliable
-predictor of performance on a future 450-subject cohort. An 80% result cannot
-be guaranteed. A larger cohort should be evaluated with a subject-level
-holdout, development-only tuning, confidence intervals, and per-class metrics.
-In particular, MCI recall must be reported because overall accuracy can hide a
-model that mostly predicts CN or AD.
 
 ## Encoder scripts
 
